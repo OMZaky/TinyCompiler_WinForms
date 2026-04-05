@@ -14,7 +14,7 @@ namespace JASON_Compiler
         Int, Float, String,
 
         // Keywords
-        Read, Write, Repeat, Until, If, ElseIf, Else, Then, Return, Endl, Main,
+        Read, Write, Repeat, Until, If, ElseIf, Else, Then, Return, End, Endl, Main,
 
         // Operators
         AssignmentOp, EqualOp, LessThanOp, GreaterThanOp, NotEqualOp, LessThanOrEqualOp, GreaterThanOrEqualOp,
@@ -54,6 +54,7 @@ namespace JASON_Compiler
             ReservedWords.Add("else", Token_Class.Else);
             ReservedWords.Add("then", Token_Class.Then);
             ReservedWords.Add("return", Token_Class.Return);
+            ReservedWords.Add("end", Token_Class.End);
             ReservedWords.Add("endl", Token_Class.Endl);
             ReservedWords.Add("main", Token_Class.Main);
 
@@ -81,104 +82,134 @@ namespace JASON_Compiler
 
         public void StartScanning(string SourceCode)
         {
+            int LineNumber = 1;
+
             for (int i = 0; i < SourceCode.Length; i++)
             {
                 char CurrentChar = SourceCode[i];
 
-                // 1. Skip Whitespace and Newlines
+                // skip Whitespace and count newlines
                 if (char.IsWhiteSpace(CurrentChar))
                 {
+                    if (CurrentChar == '\n')
+                    {
+                        LineNumber++;
+                    }
                     continue;
                 }
 
-                // 2. Handle Multi-line Comments (/* ... */)
+                // handle Multi-line Comments (/* ... */)
                 if (CurrentChar == '/' && i + 1 < SourceCode.Length && SourceCode[i + 1] == '*')
                 {
-                    i += 2; // Step past the '/*'
+                    i += 2;
 
-                    // Keep moving forward until we find '*/' or hit the end of the file
+                    // keep moving forward until we find '*/' or hit the end of the file
                     while (i < SourceCode.Length && !(SourceCode[i] == '*' && i + 1 < SourceCode.Length && SourceCode[i + 1] == '/'))
+                    {
+                        if (SourceCode[i] == '\n')
+                        {
+                            LineNumber++;
+                        }
+                        i++;
+                    }
+                    i++;
+                    continue;
+                }
+
+                // handle Single-line Comments (//)
+                else if (CurrentChar == '/' && i + 1 < SourceCode.Length && SourceCode[i + 1] == '/')
+                {
+                    i += 2;
+
+                    while (i < SourceCode.Length && SourceCode[i] != '\n')
                     {
                         i++;
                     }
-                    i++; // Step past the closing '/'
+
+                    if (i < SourceCode.Length && SourceCode[i] == '\n')
+                    {
+                        LineNumber++;
+                    }
                     continue;
                 }
 
-                // 3. Handle Identifiers and Reserved Words (Starts with a letter)
+                // handle Identifiers and Reserved Words (Starts with a letter)
                 if (char.IsLetter(CurrentChar))
                 {
                     string CurrentLexeme = CurrentChar.ToString();
 
-                    // Keep reading as long as the next character is a letter or digit
                     while (i + 1 < SourceCode.Length && char.IsLetterOrDigit(SourceCode[i + 1]))
                     {
                         CurrentLexeme += SourceCode[i + 1];
                         i++;
                     }
-                    FindTokenClass(CurrentLexeme);
+                    FindTokenClass(CurrentLexeme, LineNumber);
                 }
 
-                // 4. Handle Numbers/Constants (Starts with a digit)
+                // handle Numbers/Constants (Starts with a digit)
                 else if (char.IsDigit(CurrentChar))
                 {
                     string CurrentLexeme = CurrentChar.ToString();
 
-                    // Keep reading digits or a single decimal point for floats
                     while (i + 1 < SourceCode.Length && (char.IsDigit(SourceCode[i + 1]) || SourceCode[i + 1] == '.'))
                     {
                         CurrentLexeme += SourceCode[i + 1];
                         i++;
                     }
-                    FindTokenClass(CurrentLexeme);
+                    FindTokenClass(CurrentLexeme, LineNumber);
                 }
 
-                // 5. Handle String Literals (Starts with quotes)
+                // handle String Literals (Starts with quotes)
                 else if (CurrentChar == '"')
                 {
                     string CurrentLexeme = CurrentChar.ToString();
-                    i++; // Move inside the quote
+                    i++;
 
                     while (i < SourceCode.Length && SourceCode[i] != '"')
                     {
+
+                        // count newlines inside strings too
+                        if (SourceCode[i] == '\n')
+                        {
+                            LineNumber++;
+                        }
+
                         CurrentLexeme += SourceCode[i];
                         i++;
                     }
 
-                    if (i < SourceCode.Length) // Append the closing quote if we didn't hit EOF
+                    if (i < SourceCode.Length) // add the final quote if we found it
                     {
                         CurrentLexeme += SourceCode[i];
                     }
-                    FindTokenClass(CurrentLexeme);
+                    FindTokenClass(CurrentLexeme, LineNumber);
                 }
 
-                // 6. Handle Operators and Delimiters
+                // handle Operators and Delimiters
                 else
                 {
                     string CurrentLexeme = CurrentChar.ToString();
 
-                    // "Lookahead" logic: Check if the next character combines to make a 2-character operator
                     if (i + 1 < SourceCode.Length)
                     {
                         string twoCharOp = CurrentLexeme + SourceCode[i + 1];
 
-                        // Check if the 2-char string (like ":=" or "<=") exists in our dictionary
+                        // check if the 2-char string
                         if (Operators.ContainsKey(twoCharOp))
                         {
                             CurrentLexeme = twoCharOp;
-                            i++; // Consume the second character so we don't read it twice
+                            i++;
                         }
                     }
 
-                    FindTokenClass(CurrentLexeme);
+                    FindTokenClass(CurrentLexeme, LineNumber);
                 }
             }
 
-            // Link our local tokens list to the global JASON_Compiler state so the UI updates
             JASON_Compiler.TokenStream = Tokens;
         }
 
-        void FindTokenClass(string Lex)
+        void FindTokenClass(string Lex, int LineNumber)
         {
             Token Tok = new Token();
             Tok.lex = Lex;
@@ -208,7 +239,7 @@ namespace JASON_Compiler
                 Tokens.Add(Tok);
             }
             // Is it a String Literal?
-            else if (Lex.StartsWith("\"") && Lex.EndsWith("\""))
+            else if (Lex.Length >= 2 && Lex.StartsWith("\"") && Lex.EndsWith("\""))
             {
                 Tok.token_type = Token_Class.StringLiteral;
                 Tokens.Add(Tok);
@@ -216,7 +247,7 @@ namespace JASON_Compiler
             // Is it undefined?
             else
             {
-                Errors.Error_List.Add($"Lexical Error: Unrecognized token '{Lex}'");
+                Errors.Error_List.Add($"Line {LineNumber} | Lexical Error: Unrecognized token '{Lex}'");
             }
         }
 
