@@ -151,7 +151,7 @@ namespace JASON_Compiler
                 {
                     string CurrentLexeme = CurrentChar.ToString();
 
-                    while (i + 1 < SourceCode.Length && (char.IsDigit(SourceCode[i + 1]) || SourceCode[i + 1] == '.'))
+                    while (i + 1 < SourceCode.Length && (char.IsLetterOrDigit(SourceCode[i + 1]) || SourceCode[i + 1] == '.'))
                     {
                         CurrentLexeme += SourceCode[i + 1];
                         i++;
