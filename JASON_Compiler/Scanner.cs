@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+
+
 namespace JASON_Compiler
 {
     //TINY Language
@@ -101,9 +103,9 @@ namespace JASON_Compiler
                 // handle Multi-line Comments (/* ... */)
                 if (CurrentChar == '/' && i + 1 < SourceCode.Length && SourceCode[i + 1] == '*')
                 {
+                    int startLine = LineNumber;
                     i += 2;
 
-                    // keep moving forward until we find '*/' or hit the end of the file
                     while (i < SourceCode.Length && !(SourceCode[i] == '*' && i + 1 < SourceCode.Length && SourceCode[i + 1] == '/'))
                     {
                         if (SourceCode[i] == '\n')
@@ -112,6 +114,14 @@ namespace JASON_Compiler
                         }
                         i++;
                     }
+
+                    // Did we hit the end of the file without closing the comment?
+                    if (i >= SourceCode.Length)
+                    {
+                        Errors.Error_List.Add($"Line {startLine} | Lexical Error: Unclosed multi-line comment");
+                        continue;
+                    }
+
                     i++;
                     continue;
                 }
@@ -132,6 +142,7 @@ namespace JASON_Compiler
                     }
                     continue;
                 }
+                
 
                 // handle Identifiers and Reserved Words (Starts with a letter)
                 if (char.IsLetter(CurrentChar))
@@ -185,21 +196,46 @@ namespace JASON_Compiler
                     FindTokenClass(CurrentLexeme, LineNumber);
                 }
 
-                // handle Operators and Delimiters
+                // handle Operators, Delimiters, and Unrecognized Tokens (Maximal Munch)
                 else
                 {
                     string CurrentLexeme = CurrentChar.ToString();
 
+                    // 1. Check for 2-character operators (like :=, <=, &&)
                     if (i + 1 < SourceCode.Length)
                     {
                         string twoCharOp = CurrentLexeme + SourceCode[i + 1];
-
-                        // check if the 2-char string
                         if (Operators.ContainsKey(twoCharOp))
                         {
                             CurrentLexeme = twoCharOp;
                             i++;
+                            FindTokenClass(CurrentLexeme, LineNumber);
+                            continue;
                         }
+                    }
+
+                    
+                    if (Operators.ContainsKey(CurrentLexeme))
+                    {
+                        FindTokenClass(CurrentLexeme, LineNumber);
+                        continue;
+                    }
+
+                    // 3. UNRECOGNIZED CHARACTER (e.g., '#')
+                    // Keep eating characters until we hit a space, quote, or a valid operator/delimiter.
+                    while (i + 1 < SourceCode.Length)
+                    {
+                        char next = SourceCode[i + 1];
+
+                        
+                        bool isBoundary = char.IsWhiteSpace(next) ||
+                                          Operators.ContainsKey(next.ToString()) ||
+                                          next == '&' || next == '|' || next == '"';
+
+                        if (isBoundary) break;
+
+                        CurrentLexeme += next;
+                        i++;
                     }
 
                     FindTokenClass(CurrentLexeme, LineNumber);
