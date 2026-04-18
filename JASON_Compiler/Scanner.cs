@@ -302,25 +302,36 @@ namespace JASON_Compiler
 
         bool isConstant(string lex)
         {
-            if (string.IsNullOrEmpty(lex))
-                return false;
+            if (string.IsNullOrEmpty(lex)) return false;
 
             bool hasDecimal = false;
-            foreach (char c in lex)
+            bool hasDigitBeforeDecimal = false;
+            bool hasDigitAfterDecimal = false;
+
+            for (int i = 0; i < lex.Length; i++)
             {
+                char c = lex[i];
                 if (c == '.')
                 {
-                    if (hasDecimal) return false; // Two decimals makes it invalid
+                    if (hasDecimal) return false; // two dots
+                    if (!hasDigitBeforeDecimal) return false; // no digit before dot
                     hasDecimal = true;
                 }
-                else if (!char.IsDigit(c))
+                else if (char.IsDigit(c))
                 {
-                    return false;
+                    if (hasDecimal) hasDigitAfterDecimal = true;
+                    else hasDigitBeforeDecimal = true;
                 }
+                else return false;
             }
-            return true;
+
+            // If there's a dot, must have digit after it too
+            if (hasDecimal && !hasDigitAfterDecimal) return false;
+
+
+            return hasDigitBeforeDecimal;
         }
 
-       
+
     }
 }
