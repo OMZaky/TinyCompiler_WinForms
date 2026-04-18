@@ -33,6 +33,7 @@ namespace JASON_Compiler
     {
         public string lex;
         public Token_Class token_type;
+        public int line_num;
     }
 
     public class Scanner
@@ -142,29 +143,21 @@ namespace JASON_Compiler
                     }
                     continue;
                 }
-                
 
-                // handle Identifiers and Reserved Words (Starts with a letter)
-                if (char.IsLetter(CurrentChar))
+
+                // handle Identifiers, Reserved Words, Numbers, and potential errors
+                if (char.IsLetterOrDigit(CurrentChar))
                 {
                     string CurrentLexeme = CurrentChar.ToString();
 
-                    while (i + 1 < SourceCode.Length && char.IsLetterOrDigit(SourceCode[i + 1]))
+                    // Keep eating until we hit a valid TINY boundary
+                    while (i + 1 < SourceCode.Length)
                     {
-                        CurrentLexeme += SourceCode[i + 1];
-                        i++;
-                    }
-                    FindTokenClass(CurrentLexeme, LineNumber);
-                }
+                        char next = SourceCode[i + 1];
 
-                // handle Numbers/Constants (Starts with a digit)
-                else if (char.IsDigit(CurrentChar))
-                {
-                    string CurrentLexeme = CurrentChar.ToString();
+                        if (IsBoundary(next)) break;
 
-                    while (i + 1 < SourceCode.Length && (char.IsLetterOrDigit(SourceCode[i + 1]) || SourceCode[i + 1] == '.'))
-                    {
-                        CurrentLexeme += SourceCode[i + 1];
+                        CurrentLexeme += next;
                         i++;
                     }
                     FindTokenClass(CurrentLexeme, LineNumber);
@@ -173,6 +166,9 @@ namespace JASON_Compiler
                 // handle String Literals (Starts with quotes)
                 else if (CurrentChar == '"')
                 {
+
+                    int startLine = LineNumber; // Track where the string started
+
                     string CurrentLexeme = CurrentChar.ToString();
                     i++;
 
@@ -192,8 +188,13 @@ namespace JASON_Compiler
                     if (i < SourceCode.Length) // add the final quote if we found it
                     {
                         CurrentLexeme += SourceCode[i];
+                        FindTokenClass(CurrentLexeme, LineNumber);
+
                     }
-                    FindTokenClass(CurrentLexeme, LineNumber);
+                    else
+                    {
+                        Errors.Error_List.Add($"Line {startLine} | Lexical Error: Unclosed string literal");
+                    }
                 }
 
                 // handle Operators, Delimiters, and Unrecognized Tokens (Maximal Munch)
@@ -227,12 +228,7 @@ namespace JASON_Compiler
                     {
                         char next = SourceCode[i + 1];
 
-                        
-                        bool isBoundary = char.IsWhiteSpace(next) ||
-                                          Operators.ContainsKey(next.ToString()) ||
-                                          next == '&' || next == '|' || next == '"';
-
-                        if (isBoundary) break;
+                        if (IsBoundary(next)) break;
 
                         CurrentLexeme += next;
                         i++;
@@ -249,42 +245,38 @@ namespace JASON_Compiler
         {
             Token Tok = new Token();
             Tok.lex = Lex;
+            Tok.line_num = LineNumber;
 
-            // Is it a reserved word?
+            // Determine the token type
             if (ReservedWords.ContainsKey(Lex))
             {
                 Tok.token_type = ReservedWords[Lex];
-                Tokens.Add(Tok);
             }
-            // Is it an operator or delimiter?
             else if (Operators.ContainsKey(Lex))
             {
                 Tok.token_type = Operators[Lex];
-                Tokens.Add(Tok);
             }
-            // Is it an identifier?
             else if (isIdentifier(Lex))
             {
                 Tok.token_type = Token_Class.Identifier;
-                Tokens.Add(Tok);
             }
-            // Is it a Constant?
             else if (isConstant(Lex))
             {
                 Tok.token_type = Token_Class.Number;
-                Tokens.Add(Tok);
             }
-            // Is it a String Literal?
             else if (Lex.Length >= 2 && Lex.StartsWith("\"") && Lex.EndsWith("\""))
             {
                 Tok.token_type = Token_Class.StringLiteral;
-                Tokens.Add(Tok);
             }
-            // Is it undefined?
             else
             {
+                // If it falls through all checks, it's an error. 
                 Errors.Error_List.Add($"Line {LineNumber} | Lexical Error: Unrecognized token '{Lex}'");
+                return;
             }
+
+            // We only write this line once!
+            Tokens.Add(Tok);
         }
 
         bool isIdentifier(string lex)
@@ -330,6 +322,15 @@ namespace JASON_Compiler
 
 
             return hasDigitBeforeDecimal;
+        }
+
+
+        // Helper method to enforce strict Maximal Munch boundaries
+        bool IsBoundary(char next)
+        {
+            return char.IsWhiteSpace(next) ||
+                   Operators.ContainsKey(next.ToString()) ||
+                   next == '&' || next == '|' || next == ':' || next == '"';
         }
 
 
