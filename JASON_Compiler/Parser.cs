@@ -506,6 +506,7 @@ namespace JASON_Compiler
                     Errors.Error_List.Add("Parsing Error: Expected "
                         + ExpectedToken.ToString() + " but found " +
                         TokenStream[InputPointer].token_type.ToString() + " on Line X\r\n")
+                        InputPointer++;
                     return null;
                 }
             }
