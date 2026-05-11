@@ -101,7 +101,6 @@ namespace JASON_Compiler
             Token_Class.Int, Token_Class.Float, Token_Class.String,
             Token_Class.Read, Token_Class.Write,
             Token_Class.Repeat, Token_Class.If,
-            Token_Class.Return,
             Token_Class.Identifier
         };
 
@@ -135,8 +134,6 @@ namespace JASON_Compiler
                 stmt.Children.Add(If_Statement());
             else if (current == Token_Class.Repeat)
                 stmt.Children.Add(Repeat_Statement());
-            else if (current == Token_Class.Return)
-                stmt.Children.Add(Return_Statement());
             else if (current == Token_Class.Int || current == Token_Class.Float || current == Token_Class.String)
                 stmt.Children.Add(Declaration_Statement());
             else if (current == Token_Class.Identifier)
