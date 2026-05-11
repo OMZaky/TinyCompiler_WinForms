@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace JASON_Compiler
@@ -10,13 +7,14 @@ namespace JASON_Compiler
     public class Node
     {
         public List<Node> Children = new List<Node>();
-        
         public string Name;
+
         public Node(string N)
         {
             this.Name = N;
         }
     }
+
     public class Parser
     {
         int InputPointer = 0;
@@ -30,8 +28,12 @@ namespace JASON_Compiler
             this.InputPointer = 0;
             this.TokenStream = TokenStream;
             root = Program();
+
             return root;
         }
+
+
+        // Rule 31: Program -> Function_Statement* Main_Function
         Node Program()
         {
             Node program = new Node("Program");
@@ -264,7 +266,7 @@ namespace JASON_Compiler
         Node Condition()
         {
             return null;
-        }
+            header.Children.Add(match(Token_Class.Semicolon));
 
 
         /// <summary>
@@ -275,24 +277,23 @@ namespace JASON_Compiler
         /// <returns></returns>
         /*
         Node DeclSec()
+        
+        Node DeclSec()
         {
-            Node declsec = new Node("DeclSec");
-            // write your code here to check atleast the declare sturcure 
-            // without adding procedures
-            return declsec;
-        }
-        Node Block()
-        {
-            Node block = new Node("block");
-            block.Children.Add(match(Token_Class.Begin));
-            block.Children.Add(statements());
-            block.Children.Add(match(Token_Class.End));
-            return block;
+            Node n = new Node("Assignment_Statement");
+            // TODO: Match Identifier, Match :=, Call Expression(), Match Semicolon
+            return n;
         }
 
-        List<Token_Class> statmentToken = new List<Token_Class> { Token_Class.Read , Token_Class.Write , Token_Class.While , Token_Class.Set , Token_Class.If , Token_Class.Call}
-        Node statements()
+        // Rule 14: Write_Statement
+        Node Write_Statement()
         {
+            Node n = new Node("Write_Statement");
+            // TODO: Match write, Call Expression() or Match endl, Match Semicolon
+            return n;
+        }
+
+        // Rule 15: Read_Statement
             Node statementat = new Node("Statments");
             if (InputPointer < TokenStream.Count && statmentToken.Contains(TokenStream[InputPointer].token_type))
             {
@@ -311,61 +312,84 @@ namespace JASON_Compiler
             }
             return statementat;
 
-        }
-        Node Statment()
-        {
-            Node Statement = new Node();
-            if(InputPointer < TokenStream.Count && TokenStream[InputPointer] == Token_Class.Read)
-            {
-                Statement.Children.Add(match(Token_Class.Read));
-                Statement.Children.Add(match(Token_Class.Idenifier));
-            }
-            return Statement;
-        }
-        Node State(List<Node> nodes)
-        {
-            if (InputPointer < TokenStream.Count && TokenStream[InputPointer].token_type == Token_Class.Semicolon)
-            {
-                nodes.Add(match(Token_Class.Semicolon));
-                nodes.Add(Statment());
-                nodes = State(nodes);
-            }
-            return nodes;
+            return statementat;
+            
         }
 
+        // Rule 20: Condition_Statement
+        Node Condition_Statement()
+        {
+            Node n = new Node("Condition_Statement");
+            // TODO: Call Condition(), handle recursive Boolean Operators
+            return n;
+        }
+
+        // Rule 18: Condition -> Identifier Condition_Operator Term
+        Node Condition()
+        {
+            Node n = new Node("Condition");
+            // TODO: Match Identifier, Match Operator, Call Term()
+            return n;
+        }
+
+        // Rule 10: Expression -> String | Term | Equation
+        Node Expression()
+        {
+            Node n = new Node("Expression");
+            // TODO: Handle logic to route to StringLiteral, Term, or Equation
+            return n;
+        }
+
+        // Rule 9: Equation
+        Node Equation()
+        {
+            Node n = new Node("Equation");
+            // TODO: Handle math operations and brackets
+            return n;
+        }
+
+        // Rule 7: Term -> Number | Identifier | Function_Call
+        Node Term()
+        {
+            Node n = new Node("Term");
+            // TODO: Route to correct term type
+            return n;
+        }
+
+        // Rule 6: Function_Call
+        Node Function_Call()
+        {
+            Node n = new Node("Function_Call");
+            // TODO: Match Identifier, Match (, loop parameters, Match )
+            return n;
         // Implement your logic here
         // Until here thing below are generally useful and are not to be altered for the sake of convenience 
 
         */
+
+        // Implement your logic here
         public Node match(Token_Class ExpectedToken)
         {
-
             if (InputPointer < TokenStream.Count)
             {
                 if (ExpectedToken == TokenStream[InputPointer].token_type)
                 {
+                    Node newNode = new Node(TokenStream[InputPointer].lex);
                     InputPointer++;
-                    Node newNode = new Node(ExpectedToken.ToString());
-
                     return newNode;
-
                 }
-
                 else
                 {
                     Errors.Error_List.Add("Parsing Error: Expected "
-                        + ExpectedToken.ToString() + " and " +
-                        TokenStream[InputPointer].token_type.ToString() +
-                        "  found\r\n");
+                        + ExpectedToken.ToString() + " but found " +
+                        TokenStream[InputPointer].token_type.ToString() + " on Line X\r\n");
                     InputPointer++;
                     return null;
                 }
             }
             else
             {
-                Errors.Error_List.Add("Parsing Error: Expected "
-                        + ExpectedToken.ToString()  + "\r\n");
-                InputPointer++;
+                Errors.Error_List.Add("Parsing Error: Expected " + ExpectedToken.ToString() + " but found EOF\r\n");
                 return null;
             }
         }
@@ -378,13 +402,16 @@ namespace JASON_Compiler
                 tree.Nodes.Add(treeRoot);
             return tree;
         }
+
         static TreeNode PrintTree(Node root)
         {
             if (root == null || root.Name == null)
                 return null;
+
             TreeNode tree = new TreeNode(root.Name);
             if (root.Children.Count == 0)
                 return tree;
+
             foreach (Node child in root.Children)
             {
                 if (child == null)
