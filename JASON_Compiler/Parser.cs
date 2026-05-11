@@ -385,11 +385,6 @@ namespace JASON_Compiler
             return nodes;
         }
 
-        Node Condition()
-        {
-            return null;
-        }
-
         Node Statements()
         {
             Node statementsNode = new Node("Statements");
