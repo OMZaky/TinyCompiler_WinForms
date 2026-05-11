@@ -22,7 +22,13 @@ namespace JASON_Compiler
         public Node root;
         List<Token_Class> Datatype_tokens = new List<Token_Class> {Token_Class.Int, Token_Class.Float, Token_Class.String };
         List<Token_Class> Boolean_tokens = new List<Token_Class> { Token_Class.OrOp, Token_Class.AndOp };
-
+        List<Token_Class> statementStarters = new List<Token_Class>
+        {
+            Token_Class.Int, Token_Class.Float, Token_Class.String,
+            Token_Class.Read, Token_Class.Write,
+            Token_Class.Repeat, Token_Class.If,
+            Token_Class.Identifier
+        };
         public Node StartParsing(List<Token> TokenStream)
         {
             this.InputPointer = 0;
@@ -59,19 +65,8 @@ namespace JASON_Compiler
             Node Main = new Node("Main");
             if (InputPointer < TokenStream.Count && Datatype_tokens.Contains(TokenStream[InputPointer].token_type))
             {
-                if (TokenStream[InputPointer].token_type == Token_Class.Int)
-                {
-                    Main.Children.Add(match(Token_Class.Int));
-                }
-                else if (TokenStream[InputPointer].token_type == Token_Class.Float)
-                {
-                    Main.Children.Add(match(Token_Class.Float));
-                }
-                else if (TokenStream[InputPointer].token_type == Token_Class.String)
-                {
-                    Main.Children.Add(match(Token_Class.String));
-                }
 
+                Main.Children.Add(Datatype());
                 Main.Children.Add(match(Token_Class.Main));
                 Main.Children.Add(match(Token_Class.LParanthesis));
                 Main.Children.Add(match(Token_Class.RParanthesis));
@@ -96,6 +91,19 @@ namespace JASON_Compiler
             return null;
         }
 
+        Node Function_Statement()
+        {
+            Node funcStmt = new Node("Function_Statement");
+            funcStmt.Children.Add(Datatype());
+            funcStmt.Children.Add(match(Token_Class.Identifier)); // FunctionName
+            funcStmt.Children.Add(match(Token_Class.LParanthesis));
+            funcStmt.Children.Add(Parameters());
+            funcStmt.Children.Add(match(Token_Class.RParanthesis));
+            funcStmt.Children.Add(Function_Body());
+            return funcStmt;
+        }
+
+        
         Node function_call()
         {
             Node functionCall = new Node("function_call");
@@ -103,7 +111,7 @@ namespace JASON_Compiler
             {
                 functionCall.Children.Add(match(Token_Class.Identifier));
                 functionCall.Children.Add(match(Token_Class.LParanthesis));
-                functionCall.Children.Add(Parameters());
+                functionCall.Children.Add(Parameter_values());
                 functionCall.Children.Add(match(Token_Class.RParanthesis));
             }
             else if (InputPointer >= TokenStream.Count)
@@ -114,7 +122,7 @@ namespace JASON_Compiler
             return functionCall;
         }
 
-        Node Parameters()
+        Node Parameter_values()
         {
 
             if (InputPointer < TokenStream.Count && TokenStream[InputPointer].token_type == Token_Class.Identifier)
@@ -122,7 +130,7 @@ namespace JASON_Compiler
                 Node parameters = new Node("Parameters");
                 parameters.Children.Add(match(Token_Class.Identifier));
                 List<Node> children = new List<Node>();
-                children = repeat_parameters(children);
+                children = repeat_parameter_values (children);
                 foreach(Node c in children)
                 {
                     parameters.Children.Add(c);
@@ -132,13 +140,13 @@ namespace JASON_Compiler
             return null;
         }
 
-        List<Node> repeat_parameters(List<Node> nodes)
+        List<Node> repeat_parameter_values(List<Node> nodes)
         {
             if (InputPointer < TokenStream.Count && TokenStream[InputPointer].token_type == Token_Class.Comma)
             {
                 nodes.Add(match(Token_Class.Comma));
                 nodes.Add(match(Token_Class.Identifier));
-                nodes = repeat_parameters(nodes);
+                nodes = repeat_parameter_values(nodes);
             }
             return nodes;
 
@@ -150,18 +158,7 @@ namespace JASON_Compiler
             Node dec_stmt = new Node("declaration_statment");
             if (InputPointer < TokenStream.Count && Datatype_tokens.Contains(TokenStream[InputPointer].token_type))
             {
-                if (TokenStream[InputPointer].token_type == Token_Class.Int)
-                {
-                    dec_stmt.Children.Add(match(Token_Class.Int));
-                }
-                else if (TokenStream[InputPointer].token_type == Token_Class.Float)
-                {
-                    dec_stmt.Children.Add(match(Token_Class.Float));
-                }
-                else if (TokenStream[InputPointer].token_type == Token_Class.String)
-                {
-                    dec_stmt.Children.Add(match(Token_Class.String));
-                }
+                dec_stmt.Children.Add(Datatype());
 
                 dec_stmt.Children.Add(id_seq());
 
@@ -181,6 +178,27 @@ namespace JASON_Compiler
             return dec_stmt;
         }
 
+        
+
+        Node Datatype()
+        {
+            Node datatype = new Node("Datatype");
+
+            if (InputPointer < TokenStream.Count)
+            {
+                Token_Class current = TokenStream[InputPointer].token_type;
+                if (current == Token_Class.Int || current == Token_Class.Float || current == Token_Class.String)
+                {
+                    datatype.Children.Add(match(current));
+                    return datatype;
+                }
+            }
+
+
+            Errors.Error_List.Add("Parsing Error: Expected a datatype but found "
+            + (InputPointer < TokenStream.Count ? TokenStream[InputPointer].token_type.ToString() : "EOF") + "\r\n");
+            return datatype;
+        }
 
         Node id_seq()
         {
@@ -201,6 +219,7 @@ namespace JASON_Compiler
             return Id_seq;
         }
 
+        // differentiates delarations from simple identifiers in int x , y := 45646
         List<Node> id_diff(List<Node> nodes)
         { 
             if (InputPointer < TokenStream.Count && TokenStream[InputPointer].token_type == Token_Class.AssignmentOp)
@@ -216,6 +235,7 @@ namespace JASON_Compiler
             if (InputPointer < TokenStream.Count && TokenStream[InputPointer].token_type == Token_Class.Comma)
             {
                 nodes.Add(match(Token_Class.Comma));
+                nodes.Add(match(Token_Class.Identifier));
                 List<Node> chilren = new List<Node>();
                 chilren = id_diff(chilren);
                 foreach (Node node in chilren)
@@ -256,7 +276,6 @@ namespace JASON_Compiler
                 {
                     nodes.Add(match(Token_Class.AndOp));
                 }
-                nodes.Add(match(Token_Class.Comma));
                 nodes.Add(Condition());
                 nodes = repeat_cond(nodes);
             }
@@ -266,7 +285,55 @@ namespace JASON_Compiler
         Node Condition()
         {
             return null;
-            header.Children.Add(match(Token_Class.Semicolon));
+        }
+
+        Node Statements()
+        {
+            Node statementsNode = new Node("Statements");
+
+            while (InputPointer < TokenStream.Count && statementStarters.Contains(TokenStream[InputPointer].token_type))
+            {
+                statementsNode.Children.Add(Statement());
+            }
+
+            return statementsNode;
+        }
+
+        Node Statement()
+        {
+            Node stmt = new Node("Statement");
+
+            if (InputPointer >= TokenStream.Count) return stmt;
+
+            Token_Class current = TokenStream[InputPointer].token_type;
+
+            // route to the correct statement rule based on the keyword
+            if (current == Token_Class.Read)
+                stmt.Children.Add(Read_Statement());
+            else if (current == Token_Class.Write)
+                stmt.Children.Add(Write_Statement());
+            else if (current == Token_Class.If)
+                stmt.Children.Add(If_Statement());
+            else if (current == Token_Class.Repeat)
+                stmt.Children.Add(Repeat_Statement());
+            else if (current == Token_Class.Int || current == Token_Class.Float || current == Token_Class.String)
+                stmt.Children.Add(Declaration_Statement());
+            else if (current == Token_Class.Identifier)
+            {
+                // to differentiate Assignment (:=) vs Function Call ( "(" )
+                if (InputPointer + 1 < TokenStream.Count && TokenStream[InputPointer + 1].token_type == Token_Class.AssignmentOp)
+                {
+                    stmt.Children.Add(Assignment_Statement());
+                }
+                else
+                {
+                    stmt.Children.Add(Function_Call());
+                    stmt.Children.Add(match(Token_Class.Semicolon)); // function calls alone need semicolons
+                }
+            }
+
+            return stmt;
+        }
 
 
         /// <summary>
