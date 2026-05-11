@@ -29,6 +29,15 @@ namespace JASON_Compiler
             Token_Class.Repeat, Token_Class.If,
             Token_Class.Identifier
         };
+        List<Token_Class> Arithmetic_Operators = new List<Token_Class> {
+            Token_Class.PlusOp, Token_Class.MinusOp,
+            Token_Class.MultiplyOp, Token_Class.DivideOp
+        };
+        List<Token_Class> Conditional_Operators = new List<Token_Class> {
+            Token_Class.EqualOp, Token_Class.NotEqualOp,
+            Token_Class.LessThanOp, Token_Class.GreaterThanOp,
+            Token_Class.LessThanOrEqualOp, Token_Class.GreaterThanOrEqualOp
+        };
 
         public Node StartParsing(List<Token> TokenStream)
         {
@@ -92,11 +101,6 @@ namespace JASON_Compiler
             // Disclaimer: this function is stupidly implemented and will *probably* not work
 
             Node expression = new Node("Expression");
-            List <Token_Class> arithOps = new List<Token_Class> {
-                Token_Class.PlusOp, Token_Class.MinusOp,
-                Token_Class.MultiplyOp, Token_Class.DivideOp
-                // too lazy to add rest
-            };
             if (InputPointer < TokenStream.Count)
             {
                 Token_Class current = TokenStream[InputPointer].token_type;
@@ -105,7 +109,7 @@ namespace JASON_Compiler
                     expression.Children.Add(match(Token_Class.String));
                 }
                 else if(current == Token_Class.LParanthesis ||
-                        arithOps.Exists(x => x == current))
+                        Arithmetic_Operators.Contains(current))
                 {
                     expression.Children.Add(Equation());
                 }
@@ -116,7 +120,7 @@ namespace JASON_Compiler
             }
             else
             {
-                Errors.Error_List.Add("Parsing Error: ended before expected end of Function_call \n");
+                Errors.Error_List.Add("Parsing Error: ended before expected end of Expression \n");
                 InputPointer++;
             }
             return expression;
@@ -150,6 +154,50 @@ namespace JASON_Compiler
                 else_statement.Children.Add(match(Token_Class.End));
             }
             return else_statement;
+        }
+
+        Node Assignment_Statement()
+        {
+            Node assignment_statement = new Node("Assignment_Statement");
+            assignment_statement.Children.Add(match(Token_Class.Identifier));
+            assignment_statement.Children.Add(match(Token_Class.AssignmentOp));
+            assignment_statement.Children.Add(Expression());
+            return assignment_statement;
+        }
+
+        Node Condition()
+        {
+            Node condition = new Node("Condition");
+            condition.Children.Add(match(Token_Class.Identifier));
+            if (InputPointer < TokenStream.Count)
+            {
+                Token_Class current = TokenStream[InputPointer].token_type;
+                if (Conditional_Operators.Contains(current))
+                {
+                    condition.Children.Add(match(current));
+                }
+                else
+                {
+                    Errors.Error_List.Add("Parsing Error: Condition was expecting a conditional operator \n");
+                }
+            }
+            else
+            {
+                Errors.Error_List.Add("Parsing Error: ended before expected end of Condition \n");
+                InputPointer++;
+            }
+            condition.Children.Add(Term());
+            return condition;
+        }
+
+        Node Repeat_Statement()
+        {
+            Node repeat_statement = new Node("Repeat_Statement");
+            repeat_statement.Children.Add(match(Token_Class.Repeat));
+            repeat_statement.Children.Add(Statements());
+            repeat_statement.Children.Add(match(Token_Class.Until));
+            repeat_statement.Children.Add(Condition_statment());
+            return repeat_statement;
         }
 
         Node Function_Statement()
