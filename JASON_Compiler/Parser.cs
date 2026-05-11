@@ -232,7 +232,7 @@ namespace JASON_Compiler
             }
             else
             {
-                Errors.Error_List.Add("Parsing Error: Expected a datatype to begin main function but found "
+                Errors.Error_List.Add("Parsing Error: Expected a datatype to begin Declaration statment but found "
                 + TokenStream[InputPointer].token_type.ToString() + "\r\n");
                 InputPointer++;
             }
@@ -254,7 +254,6 @@ namespace JASON_Compiler
                     return datatype;
                 }
             }
-
 
             Errors.Error_List.Add("Parsing Error: Expected a datatype but found "
             + (InputPointer < TokenStream.Count ? TokenStream[InputPointer].token_type.ToString() : "EOF") + "\r\n");
