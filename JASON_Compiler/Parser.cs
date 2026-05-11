@@ -29,6 +29,7 @@ namespace JASON_Compiler
             Token_Class.Repeat, Token_Class.If,
             Token_Class.Identifier
         };
+
         public Node StartParsing(List<Token> TokenStream)
         {
             this.InputPointer = 0;
@@ -449,8 +450,7 @@ namespace JASON_Compiler
                 {
                     Errors.Error_List.Add("Parsing Error: Expected "
                         + ExpectedToken.ToString() + " but found " +
-                        TokenStream[InputPointer].token_type.ToString() + " on Line X\r\n");
-                    InputPointer++;
+                        TokenStream[InputPointer].token_type.ToString() + " on Line X\r\n")
                     return null;
                 }
             }
