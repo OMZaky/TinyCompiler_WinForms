@@ -70,7 +70,7 @@ namespace JASON_Compiler
                 Main.Children.Add(match(Token_Class.Main));
                 Main.Children.Add(match(Token_Class.LParanthesis));
                 Main.Children.Add(match(Token_Class.RParanthesis));
-                Main.Children.Add(function_body());
+                Main.Children.Add(Function_Body());
             }
             else if (InputPointer >= TokenStream.Count)
             {
@@ -86,9 +86,69 @@ namespace JASON_Compiler
             return Main;
         }
 
-        Node function_body()
+        Node Expression()
         {
-            return null;
+            // Disclaimer: this function is stupidly implemented and will *probably* not work
+
+            Node expression = new Node("Expression");
+            List <Token_Class> arithOps = new List<Token_Class> {
+                Token_Class.PlusOp, Token_Class.MinusOp,
+                Token_Class.MultiplyOp, Token_Class.DivideOp
+                // too lazy to add rest
+            };
+            if (InputPointer < TokenStream.Count)
+            {
+                Token_Class current = TokenStream[InputPointer].token_type;
+                if(current == Token_Class.String)
+                {
+                    expression.Children.Add(match(Token_Class.String));
+                }
+                else if(current == Token_Class.LParanthesis ||
+                        arithOps.Exists(x => x == current))
+                {
+                    expression.Children.Add(Equation());
+                }
+                else
+                {
+                    expression.Children.Add(Term());
+                }
+            }
+            else
+            {
+                Errors.Error_List.Add("Parsing Error: ended before expected end of Function_call \n");
+                InputPointer++;
+            }
+            return expression;
+        }
+        Node Return_Statement()
+        {
+            Node return_statement = new Node("Return_Statement");
+            return_statement.Children.Add(match(Token_Class.Return));
+            return_statement.Children.Add(Expression());
+            return_statement.Children.Add(match(Token_Class.Semicolon));
+            return return_statement;
+        }
+
+        Node Function_Body()
+        {
+            Node function_body = new Node("Function_Body");
+            function_body.Children.Add(match(Token_Class.LBrace));
+            function_body.Children.Add(Statements());
+            function_body.Children.Add(Return_Statement());
+            function_body.Children.Add(match(Token_Class.RBrace));
+            return function_body;
+        }
+
+        Node Else_Statement()
+        {
+            Node else_statement = new Node("Else_Statement");
+            if (InputPointer < TokenStream.Count)
+            {
+                else_statement.Children.Add(match(Token_Class.Else));
+                else_statement.Children.Add(Statements());
+                else_statement.Children.Add(match(Token_Class.End));
+            }
+            return else_statement;
         }
 
         Node Function_Statement()
@@ -245,11 +305,6 @@ namespace JASON_Compiler
                 nodes = dec_seq(nodes);
             }
             return nodes;
-        }
-
-        Node Expression()
-        {
-            return null;
         }
 
         Node Condition_statment() {
