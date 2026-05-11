@@ -65,6 +65,59 @@ using System.Windows.Forms;
             block.Children.Add(match(Token_Class.End));
             return block;
         }
+        Node Term()
+        {
+            Node term = new Node("Term");
+
+            if(InputPointer < TokenStream.Count && TokenStream[InputPointer].token_type == Token_Class.Number)
+            {
+                term.Children.Add(match(Token_Class.Number));
+            }
+
+            else if (InputPointer < TokenStream.Count && TokenStream[InputPointer].token_type == Token_Class.Identifier)
+            {
+                if (TokenPointer + 1 < TokenStream.Count && TokenStream[InputPointer + 1].toke_type == Token_Class.LParenthesis)
+                {
+                    term.Children.Add(FunctionCall);
+                }
+                else 
+                {
+                    term.Children.Add(match(Token_Class.Identifier));
+                }
+            }
+            else 
+            {
+                 Errors.Error_List.Add("Invalid Term");
+            }
+            return term;
+        }
+
+        Node FunctionCall()
+        {
+            Node func = new Node("FunctionCall");
+        
+            func.Children.Add(match(Token_Class.Idenifier));
+        
+            func.Children.Add(match(Token_Class.LParanthesis));
+        
+            // args
+            if (InputPointer < TokenStream.Count &&
+                TokenStream[InputPointer].token_type == Token_Class.Idenifier)
+            {
+                func.Children.Add(match(Token_Class.Idenifier));
+        
+                while (InputPointer < TokenStream.Count &&
+                       TokenStream[InputPointer].token_type == Token_Class.Comma)
+                {
+                    func.Children.Add(match(Token_Class.Comma));
+                    func.Children.Add(match(Token_Class.Idenifier));
+                }
+            }
+        
+            func.Children.Add(match(Token_Class.RParanthesis));
+        
+            return func;
+        }
 
         List<Token_Class> statmentToken = new List<Token_Class> { Token_Class.Read , Token_Class.Write , Token_Class.While , Token_Class.Set , Token_Class.If , Token_Class.Call}
         Node statements()
